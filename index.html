@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Day 24 — The World Is Yours</title>
+<style>
+:root{--pink:#ffd8e8;--plum:#553d70;--gold:#ffe5a6;--glass:rgba(35,25,58,.58)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#b8a6d8;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:white}
+canvas{display:block;touch-action:none}#loading{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:linear-gradient(145deg,#40365f,#9c729d 55%,#e6a9c2);text-align:center;padding:24px;transition:opacity .8s}
+#loading h1{font-family:Georgia,serif;font-size:clamp(34px,8vw,64px);font-weight:500;margin:0 0 12px;color:#fff0f6}#loading p{max-width:440px;line-height:1.6;color:#fff0f6}
+#start{border:1px solid #ffe8f2;background:rgba(255,255,255,.16);color:white;border-radius:30px;padding:14px 26px;font-size:15px;letter-spacing:1px;margin-top:12px}
+#hud{position:fixed;inset:0;pointer-events:none;display:none}
+#top{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.pill{background:var(--glass);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(12px);border-radius:16px;padding:10px 13px;box-shadow:0 8px 25px #251b3a33}
+#brand{font-family:Georgia,serif;font-size:17px;color:#ffeaf3}#objective{font-size:12px;max-width:210px;line-height:1.45;text-align:right}
+#progress{position:absolute;top:76px;left:14px;width:min(220px,55vw);font-size:11px;letter-spacing:.5px}
+#bar{height:5px;background:#ffffff55;border-radius:8px;margin-top:7px;overflow:hidden}#fill{height:100%;width:0;background:linear-gradient(90deg,#ffc8df,#ffe7a8);transition:width .4s}
+#prompt{position:absolute;left:50%;bottom:23%;transform:translateX(-50%);padding:11px 17px;border-radius:20px;background:rgba(39,28,59,.75);border:1px solid #fff7;display:none;font-size:13px;white-space:nowrap;text-align:center}
+#message{position:absolute;left:50%;top:27%;transform:translate(-50%,-10px);width:min(86vw,440px);padding:20px 22px;text-align:center;background:rgba(42,29,62,.88);border:1px solid #ffe4ef88;border-radius:20px;box-shadow:0 15px 55px #21132b66;opacity:0;transition:.35s;pointer-events:none}
+#message.show{opacity:1;transform:translate(-50%,0)}#message h2{font-family:Georgia,serif;font-weight:500;color:#ffe3ee;margin:0 0 8px;font-size:25px}#message p{font-size:14px;line-height:1.55;margin:0;color:#fff5fa}
+#controls{position:absolute;bottom:18px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:end;pointer-events:auto}
+#dpad{position:absolute;left:16px;bottom:20px;width:164px;height:164px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:5px;touch-action:none}
+.dir{border:2px solid #ffffffaa;border-radius:17px;background:rgba(61,43,78,.68);color:#fff;font-size:26px;font-weight:700;backdrop-filter:blur(5px);box-shadow:0 3px 12px #0004;touch-action:none;user-select:none;-webkit-user-select:none}
+.dir:active,.dir.pressed{background:#fff8;color:#5b3b70;transform:scale(.96)}
+#up{grid-column:2;grid-row:1}#left{grid-column:1;grid-row:2}#right{grid-column:3;grid-row:2}#down{grid-column:2;grid-row:3}
+.dpadCenter{grid-column:2;grid-row:2;border-radius:50%;border:1px solid #ffffff44;background:#ffffff12}
+#actions{display:flex;gap:10px;align-items:end}
+.ctrl{border:1px solid #ffffff77;background:rgba(49,35,68,.62);color:white;backdrop-filter:blur(8px);border-radius:50%;width:62px;height:62px;font-size:12px;touch-action:none}
+#interact{width:72px;height:72px;background:rgba(197,116,158,.8);font-weight:700}
+#run{width:56px;height:56px}
+#hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;color:#fff;text-shadow:0 2px 5px #30203e;white-space:nowrap;opacity:.8}
+#map{position:absolute;right:14px;top:83px;width:122px;padding:10px;font-size:10px;line-height:1.7}
+#map strong{display:block;color:#ffe7f0;margin-bottom:3px}
+#toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:Georgia,serif;font-size:clamp(25px,6vw,42px);text-align:center;color:#fff0f7;text-shadow:0 3px 20px #49305c;opacity:0;transition:opacity .5s;pointer-events:none;width:90%}
+#toast.show{opacity:1}
+#cakeModal{position:absolute;inset:0;display:none;place-items:center;background:rgba(25,17,39,.72);backdrop-filter:blur(7px);pointer-events:auto;padding:18px;z-index:8}
+#cakeCard{width:min(92vw,430px);border:1px solid #ffe5ef99;border-radius:24px;padding:22px 18px 20px;text-align:center;background:linear-gradient(145deg,#fff0f5,#f5d9e8 55%,#e9d9f0);color:#573d62;box-shadow:0 20px 70px #120b25aa}
+#cakeCard h2{font:500 clamp(25px,6vw,34px) Georgia,serif;margin:0 0 6px;color:#714a70}
+#cakeCard p{font-size:13px;line-height:1.5;margin:7px auto 12px;max-width:320px}
+#cakeScene{height:190px;position:relative;display:flex;align-items:end;justify-content:center;gap:12px;margin:8px auto 12px;isolation:isolate}
+#cakeScene:before{content:"";position:absolute;bottom:5px;width:260px;height:24px;border-radius:50%;background:#c69ab455;filter:blur(7px);z-index:-1}
+.plate{width:112px;height:25px;border-radius:50%;background:linear-gradient(#fff,#eadfea);border:3px solid #d7bfd8;box-shadow:0 7px 12px #7a527522;position:relative;z-index:1}
+.cakePiece{position:absolute;width:68px;height:62px;left:19px;bottom:14px;border-radius:8px 8px 5px 5px;background:repeating-linear-gradient(to bottom,#a52d48 0 14px,#fff0e7 14px 21px,#8f233e 21px 35px,#fff0e7 35px 42px,#a52d48 42px 100%);box-shadow:inset 0 0 0 1px #6e1830,0 4px 7px #6e183044;opacity:0;transform:translateY(-22px) scale(.65);transition:.8s cubic-bezier(.2,.8,.2,1)}
+.cakePiece:before{content:"";position:absolute;top:-8px;left:-3px;right:-3px;height:14px;border-radius:50%;background:#fff5ed;border:1px solid #f0d7d9}
+.cakePiece:after{content:"";position:absolute;right:7px;top:9px;width:9px;height:9px;border-radius:50%;background:#c73554;box-shadow:-18px 7px 0 #d94d68}
+#wholeCake{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);width:140px;height:86px;border-radius:50% 50% 16px 16px;background:linear-gradient(to bottom,#fff5ed 0 13%,#a72c48 13% 29%,#fff0e7 29% 39%,#8d203b 39% 72%,#fff0e7 72% 81%,#8e1e39 81%);box-shadow:inset 0 -9px #72172e,0 9px 15px #80506a33;transition:.8s;z-index:2}
+#wholeCake:before{content:"";position:absolute;left:5px;right:5px;top:-13px;height:28px;border-radius:50%;background:#fff7ef;border:2px solid #f1d8d9;box-shadow:inset 0 -5px #f0d2d4}
+#wholeCake:after{content:"♥  ✦  ♥";position:absolute;top:13px;left:0;right:0;color:#b52c4b;font-size:17px;text-align:center;text-shadow:0 1px #fff}
+#cakeDecor{position:absolute;z-index:3;left:50%;top:62px;transform:translateX(-50%);font-size:17px;white-space:nowrap;pointer-events:none}
+#knife{position:absolute;left:calc(50% + 43px);top:6px;width:8px;height:94px;border-radius:5px;background:linear-gradient(90deg,#9b9b9b,#fff,#aaa);transform:rotate(28deg);transform-origin:bottom;transition:transform .65s;z-index:4;box-shadow:1px 2px 3px #5556}
+#candle{position:absolute;left:50%;bottom:105px;width:8px;height:28px;background:repeating-linear-gradient(45deg,#fff 0 5px,#d77b9f 5px 9px);z-index:5}
+#flame{position:absolute;left:calc(50% - 6px);bottom:132px;font-size:20px;animation:flicker .7s infinite alternate;z-index:6}
+@keyframes flicker{to{transform:scale(1.2) rotate(5deg)}}
+#cakeScene.blown #flame{opacity:0;transform:scale(.2);transition:.3s}
+#cakeScene.cut #knife{transform:translate(-42px,38px) rotate(-8deg)}
+#cakeScene.cut #wholeCake{opacity:0;transform:translateX(-50%) scale(.65) rotate(-12deg)}
+#cakeScene.cut #cakeDecor{opacity:0}
+#cakeScene.cut #candle,#cakeScene.cut #flame{opacity:0}
+#cakeScene.cut .cakePiece{opacity:1;transform:translateY(0) scale(1)}
+#cakeScene.bite .cakePiece:first-child{filter:brightness(.92);transform:translateY(0) scale(.94) rotate(-3deg)}
+#cutCake{border:0;border-radius:30px;padding:13px 25px;background:linear-gradient(100deg,#b73559,#9567a9);color:white;font-weight:700;letter-spacing:.3px;font-size:14px;box-shadow:0 7px 18px #9b5c8955;min-width:205px}
+#cutCake:disabled{opacity:.85}
+#cakeNote{color:#694d6c}
+#closeCake{display:block;margin:10px auto 0;border:0;background:transparent;color:#775b78;text-decoration:underline;padding:8px}
+@media(max-width:600px){#map{width:105px;font-size:9px;top:80px}#objective{max-width:155px;font-size:11px}#dpad{width:150px;height:150px;left:10px;bottom:12px}.dir{font-size:23px}#actions{gap:7px}.ctrl{width:54px;height:54px}#interact{width:66px;height:66px}}
+</style>
+</head>
+<body>
+<div id="loading">
+ <div><div style="font-size:38px">🎂 ✨ 🌷</div><h1>HAPPY BIRTHDAY,<br>ANSHIKAAAA!!</h1>
+ <p>Today, this little world is yours. 💗<br>A whole island of wishes, tiny surprises, and one special cake waiting to be cut.</p>
+ <div style="font-family:Georgia,serif;font-size:clamp(19px,4vw,27px);color:#ffe5a6;margin:12px 0 4px">THE WORLD IS YOURS</div>
+ <button id="start">ENTER YOUR WORLD ✨</button>
+ <p style="font-size:11px;opacity:.8">Best experienced in landscape mode. Internet is needed to load the 3D engine.</p></div>
+</div>
+<div id="hud">
+ <div id="top"><div class="pill" id="brand">DAY 24 · THE WORLD IS YOURS</div><div class="pill" id="objective">Go exploreee. There are little surprises waiting around the island. 💗</div></div>
+ <div id="progress" class="pill"><span id="count">0 / 6 DISCOVERED</span><div id="bar"><div id="fill"></div></div></div>
+ <div id="map" class="pill"><strong>ISLAND GUIDE</strong><div id="maplist">🏰 Palace<br>🌷 Wish Garden<br>💦 Whispering Falls<br>🎂 Cake Celebration<br>🌙 Dream Lake<br>💌 Final Pavilion 🔒</div></div>
+ <div id="prompt">Tap INTERACT to discover</div>
+ <div id="message"><h2 id="msgTitle"></h2><p id="msgText"></p></div>
+ <div id="toast"></div>
+ <div id="cakeModal">
+  <div id="cakeCard">
+   <div style="font-size:25px;margin-bottom:5px">🎂 🕯️ 💗</div>
+   <h2>Okayyyy, birthday star!</h2>
+   <p id="cakeIntro">A proper red velvet cake. Soft cream-cheese frosting, extra crumbs, strawberries… the whole thing. You didn't think we'd skip the cake, did you? 😭</p>
+   <div id="cakeScene">
+    <div class="plate"><div class="cakePiece"></div></div>
+    <div id="wholeCake"></div><div id="cakeDecor">🍓　✦　🍓</div><div id="knife"></div><div id="candle"></div><div id="flame">🕯️</div>
+    <div class="plate"><div class="cakePiece"></div></div>
+   </div>
+   <div style="font-size:11px;letter-spacing:1.5px;color:#a16e83;margin:0 0 8px">RED VELVET · CREAM CHEESE · EXTRA LOVE</div>
+   <button id="cutCake">MAKE A WISH ✨</button>
+   <p id="cakeNote" style="min-height:38px;margin:10px auto 0">Okay, close your eyes for a second and make your birthday wish. No peekinggg. 🤫</p>
+   <button id="closeCake">Back to the island</button>
+  </div>
+ </div>
+ <div id="controls">
+  <div id="dpad" aria-label="Movement controls">
+   <button class="dir" id="up" aria-label="Move forward">▲</button>
+   <button class="dir" id="left" aria-label="Turn left">◀</button>
+   <div class="dpadCenter"></div>
+   <button class="dir" id="right" aria-label="Turn right">▶</button>
+   <button class="dir" id="down" aria-label="Move backward">▼</button>
+  </div>
+  <div id="actions"><button class="ctrl" id="run">RUN</button><button class="ctrl" id="interact">✧<br>INTERACT</button></div>
+ </div>
+ <div id="hint">▲ move · ▼ reverse · ↶ ↷ turn · drag screen to look around</div>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const loading=document.getElementById('loading'),hud=document.getElementById('hud');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xb9a9d6);scene.fog=new THREE.Fog(0xb9a9d6,38,105);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,220);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffeaf4,0x6d668e,2.0));
+const sun=new THREE.DirectionalLight(0xfff0d8,2.2);sun.position.set(-20,35,18);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-45;sun.shadow.camera.right=45;sun.shadow.camera.top=45;sun.shadow.camera.bottom=-45;scene.add(sun);
+const mat=(c,r=.8,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const grass=mat(0x8dbb9a),pathMat=mat(0xe9c9c4),stone=mat(0xb9a9c5),pink=mat(0xf2b9d0),cream=mat(0xffe9d5),gold=mat(0xe9c77e,.35,.55),purple=mat(0x7660a3),water= new THREE.MeshStandardMaterial({color:0x9bc8d2,roughness:.18,metalness:.15,transparent:true,opacity:.82});
+function mesh(g,m,x,y,z,par=scene){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;par.add(o);return o}
+function box(x,y,z,sx,sy,sz,m,par=scene){return mesh(new THREE.BoxGeometry(sx,sy,sz),m,x,y,z,par)}
+function sphere(x,y,z,s,m,par=scene){return mesh(new THREE.SphereGeometry(s,16,12),m,x,y,z,par)}
+function cylinder(x,y,z,rt,rb,h,m,par=scene){return mesh(new THREE.CylinderGeometry(rt,rb,h,16),m,x,y,z,par)}
+function torus(x,y,z,r,t,m,par=scene){return mesh(new THREE.TorusGeometry(r,t,8,32),m,x,y,z,par)}
+// Island
+const land=mesh(new THREE.CylinderGeometry(43,47,4,96),grass,0,-2,0);land.receiveShadow=true;
+const ground=mesh(new THREE.CircleGeometry(43,96),grass,0,.04,0);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;
+const pathPts=[new THREE.Vector3(0,.08,13),new THREE.Vector3(0,.08,5),new THREE.Vector3(-9,.08,-1),new THREE.Vector3(-17,.08,-9),new THREE.Vector3(-10,.08,-20),new THREE.Vector3(1,.08,-25),new THREE.Vector3(13,.08,-17),new THREE.Vector3(20,.08,-7),new THREE.Vector3(13,.08,5),new THREE.Vector3(0,.08,13)];
+const curve=new THREE.CatmullRomCurve3(pathPts);const path=mesh(new THREE.TubeGeometry(curve,180,1.45,8,false),pathMat,0,0,0);path.receiveShadow=true;
+// castle/palace
+function tower(x,z,h=8){cylinder(x,h/2,z,1.25,1.5,h,cream);const roof=mesh(new THREE.ConeGeometry(1.7,2.8,4),pink,x,h+1.35,z);roof.rotation.y=Math.PI/4; sphere(x,h*.55,z,0.28,gold)}
+function palace(x,z){box(x,3,z,12,6,7,cream);box(x,6.4,z,5,1,7,pink);for(let i=-1;i<=1;i++){box(x+i*3.2,2.5,z-3.56,1.1,4.8,.25,pink);box(x+i*3.2,5.1,z-3.7,1.5,.3,.3,gold)}tower(x-5,z-2,8);tower(x+5,z-2,8);tower(x,z+2,10);const door=mesh(new THREE.BoxGeometry(1.8,3,0.25),purple,x,1.5,z-3.8);torus(x,3.05,z-3.85,.95,.08,gold);box(x,9,z,4,.5,4,pink);const sign=box(x,10,z,5,.45,.35,gold);return door}
+palace(0,-31);
+// fountain plaza
+cylinder(0,.3,12,3.1,3.5,.6,stone);cylinder(0,1,12,1.8,2.1,.8,cream);sphere(0,2.2,12,.7,water);for(let i=0;i<8;i++){let a=i*Math.PI/4;sphere(Math.cos(a)*1.6,1.35,12+Math.sin(a)*1.6,.18,water)}
+// trees and flowers
+function tree(x,z,s=1){cylinder(x,1.5*s,z,.25*s,.4*s,3*s,mat(0x886c68));const crown=sphere(x,3.6*s,z,1.55*s,mat(0x78a987));crown.scale.set(1,1.1,1);sphere(x-.8*s,3.5*s,z+.25*s,.85*s,mat(0x91bd9a));}
+for(let i=0;i<65;i++){let a=i*2.399,r=24+(i%7)*2.2,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(x)<8&&z< -24)continue;tree(x,z,.65+(i%4)*.13)}
+const flowerMats=[mat(0xffb9d3),mat(0xffe4a8),mat(0xc7b7f1),mat(0xffffff)];
+const flowers=[];
+function flower(x,z,s=1){cylinder(x,.35*s,z,.045*s,.06*s,.7*s,mat(0x4e9874));for(let j=0;j<5;j++){let a=j*Math.PI*2/5;sphere(x+Math.cos(a)*.22*s,.72*s,z+Math.sin(a)*.22*s,.17*s,flowerMats[(j+Math.floor(x+z+20))%4])}sphere(x,.75*s,z,.11*s,gold);flowers.push({x,z})}
+for(let i=0;i<150;i++){let a=i*2.4,r=6+(i%11)*1.5,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.hypot(x,z)<5)continue;flower(x,z,.65+(i%3)*.18)}
+// six themed zones
+const zones=[
+{id:'palace',name:'The Birthday Palace',emoji:'🏰',x:0,z:-31,r:8,title:'WELCOME TO YOUR WORLD',text:'Soooo, you made it to the palace!! 😭 I hope you have been looking around properly because I hid little surprises all over this island. And yes, I made the whole place for your birthday. Obviously.'},
+{id:'garden',name:'The Garden of Wishes',emoji:'🌷',x:-19,z:-8,r:7,title:'A GARDEN FULL OF WISHES',text:'Look at all these flowersss. 🌷 I feel like this place needed to be ridiculously pretty, okay? Take your time here. No rushing around like you have somewhere urgent to be. 😭'},
+{id:'falls',name:'The Whispering Falls',emoji:'💦',x:-10,z:20,r:7,title:'A LITTLE MOMENT OF PEACE',text:'A tiny quiet corner, just for a breather. Sometimes you really do need to pause, do absolutely nothing for a minute, and let your brain be quiet. Stay here as long as you like. 💗'},
+{id:'cafe',name:'The Cake Celebration',emoji:'🎂',x:20,z:5,r:8,title:'LET’S CUT YOUR BIRTHDAY CAKE!',text:'WAITTTT. You found the cake!! 😭🎂 And not just any cake — RED VELVET. Come closer, birthday girl. We are absolutely not leaving without cutting it.'},
+{id:'lake',name:'The Dream Lake',emoji:'🌙',x:18,z:-20,r:8,title:'DREAM WITHOUT LIMITS',text:'This is your little reminder that you do not have to have everything figured out right now. Keep trying things, keep changing your mind when you need to, and give your dreams room to grow. You have time. 🌙'},
+{id:'final',name:'The Final Pavilion',emoji:'💌',x:0,z:0,r:8,title:'HAPPIEST BIRTHDAY, ANSHIKAAAA!!',text:'And you actually found every place!! 😭 I hope you had fun wandering around this little island. I made it with so many tiny details because one big birthday message just did not feel enough. Happiest birthday, Anshikaaaa. I hope this year gives you lots of stories worth telling. ❤️'}
+];
+function arch(x,z,color=gold){cylinder(x-2,2,z,.22,.22,4,cream);cylinder(x+2,2,z,.22,.22,4,cream);const top=mesh(new THREE.TorusGeometry(2,.22,10,32,Math.PI),cream,x,3.9,z);top.rotation.z=Math.PI}
+function marker(x,z,c){cylinder(x,.22,z,2.4,2.7,.35,stone);cylinder(x,.43,z,1.9,2.2,.12,cream);for(let i=0;i<8;i++){let a=i*Math.PI/4;sphere(x+Math.cos(a)*2.2,.65,z+Math.sin(a)*2.2,.18,gold)}}
+marker(-19,-8); // garden
+for(let i=0;i<18;i++){let a=i*2.4,r=3+(i%4)*.8;flower(-19+Math.cos(a)*r,-8+Math.sin(a)*r,1)}
+// Whispering Falls: a quiet waterfall, pool and stepping stones
+cylinder(-10,.22,20,5.5,6,.45,stone);
+box(-10,3.1,17.7,5.8,6.2,1.1,stone);
+const fallingWater=box(-10,2.9,17.05,2.6,5.1,.16,water);
+const fallsPool=mesh(new THREE.CircleGeometry(4.2,48),water,-10,.18,21.7);fallsPool.rotation.x=-Math.PI/2;
+for(let i=0;i<7;i++){const a=i*.82;sphere(-10+Math.cos(a)*3.3,.55,21.7+Math.sin(a)*3.3,.22,gold)}
+for(let i=0;i<5;i++)sphere(-13+i*1.5,5.5+(i%2)*.45,17.1,.22,mat(0xffe5b0));
+// cafe
+box(20,1.5,5,8,3,6,cream);box(20,3.2,5,8,.35,6,pink);box(20,2.8,1.85,3.5,1.8,.2,purple);
+cylinder(20,1.1,10,2.4,2.4,.4,cream);cylinder(20,2,10,1.9,2.1,1.4,pink);cylinder(20,2.85,10,1.3,1.7,.4,cream);for(let i=0;i<5;i++){let a=i*Math.PI*2/5;sphere(20+Math.cos(a)*.9,3.15,10+Math.sin(a)*.9,.18,mat(0xffdce9))}cylinder(20,3.5,10,.08,.08,.7,gold);
+// lake
+const lake=mesh(new THREE.CircleGeometry(7,64),water,18,.13,-20);lake.rotation.x=-Math.PI/2;torus(18,.2,-20,7,.18,cream);for(let i=0;i<8;i++){let a=i*Math.PI/4;sphere(18+Math.cos(a)*5,.5,-20+Math.sin(a)*5,.3,mat(0xffe4a8))}
+for(let i=0;i<6;i++){let x=15+i*1.2,z=-19+(i%2)*1.5;const lantern=box(x,1.2,z,.45,.65,.45,gold);sphere(x,1.7,z,.2,mat(0xfff0b7))}
+ // final pavilion
+cylinder(0,.35,0,6,6.5,.65,stone);cylinder(0,.7,0,5.5,5.8,.2,cream);
+for(let i=0;i<8;i++){let a=i*Math.PI/4,x=Math.cos(a)*4.4,z=Math.sin(a)*4.4;cylinder(x,2.5,z,.18,.25,4.5,cream);sphere(x,4.8,z,.28,gold)}
+const roof=mesh(new THREE.ConeGeometry(5.6,2.4,8),pink,0,5.9,0);roof.rotation.y=Math.PI/8;
+const finalCake=cylinder(0,1.8,0,1.4,1.7,1.2,mat(0xffc8db));cylinder(0,2.5,0,1.1,1.4,.25,cream);finalCake.visible=false;
+// butterflies / floating lights
+const motes=[];for(let i=0;i<55;i++){let o=sphere((Math.random()-.5)*65,1+Math.random()*8,(Math.random()-.5)*65,.07+Math.random()*.07,mat(0xffe5b0,.4));motes.push({o,base:o.position.clone(),phase:Math.random()*6})}
+// character, stylised avatar
+const player=new THREE.Group();scene.add(player);
+const skin=mat(0xf2c6ad),hair=mat(0x4d3546),dress=mat(0xf0b8d0),shoe=mat(0x80658d);
+const body=mesh(new THREE.CapsuleGeometry(.42,.8,4,8),dress,0,1.35,0,player);
+const head=sphere(0,2.35,0,.48,skin,player);
+const hairCap=sphere(0,2.58,-.08,.51,hair,player);hairCap.scale.set(1.02,.78,1.02);
+for(let s of [-1,1]){const strand=cylinder(s*.39,1.9,-.02,.12,.16,1.15,hair,player);strand.rotation.z=s*.12}
+const legL=cylinder(-.2,.48,0,.13,.16,.7,shoe,player),legR=cylinder(.2,.48,0,.13,.16,.7,shoe,player);
+const armL=cylinder(-.53,1.42,0,.11,.13,.75,skin,player),armR=cylinder(.53,1.42,0,.11,.13,.75,skin,player);armL.rotation.z=-.25;armR.rotation.z=.25;
+const bow=sphere(.32,2.75,.05,.2,pink,player);bow.scale.set(1.4,.55,.5);
+player.position.set(0,0,13);
+let yaw=0,camYaw=0,moveX=0,moveY=0,running=false,activeZone=null,nearZone=null,discovered=new Set(),lastMsg=0;
+const keys={};addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' '||e.key==='e'||e.key==='E')interact()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+// Four-button movement pad: hold a direction to move, release to stop.
+const directionButtons = {
+ up: document.getElementById('up'),
+ down: document.getElementById('down'),
+ left: document.getElementById('left'),
+ right: document.getElementById('right')
+};
+const heldDirections = new Set();
+function refreshMovement(){
+ moveX = (heldDirections.has('right')?1:0) - (heldDirections.has('left')?1:0);
+ moveY = (heldDirections.has('down')?1:0) - (heldDirections.has('up')?1:0);
+}
+Object.entries(directionButtons).forEach(([direction,button])=>{
+ if(!button)return;
+ const press=e=>{
+  e.preventDefault();
+  heldDirections.add(direction);
+  button.classList.add('pressed');
+  try{button.setPointerCapture(e.pointerId)}catch(_){}
+  refreshMovement();
+ };
+ const release=e=>{
+  heldDirections.delete(direction);
+  button.classList.remove('pressed');
+  refreshMovement();
+ };
+ button.addEventListener('pointerdown',press);
+ ['pointerup','pointercancel','pointerleave','lostpointercapture'].forEach(ev=>button.addEventListener(ev,release));
+ button.addEventListener('contextmenu',e=>e.preventDefault());
+});
+let drag=false,dragId=null,lastX=0,lastY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.target.closest('#dpad,#actions,#cakeModal'))return;drag=true;dragId=e.pointerId;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
+renderer.domElement.addEventListener('pointermove',e=>{if(drag&&e.pointerId===dragId){camYaw-=(e.clientX-lastX)*.006;camera.userData.pitch=THREE.MathUtils.clamp((camera.userData.pitch||.28)+(e.clientY-lastY)*.003,-.05,.8);lastX=e.clientX;lastY=e.clientY}});
+renderer.domElement.addEventListener('pointerup',()=>drag=false);renderer.domElement.addEventListener('pointercancel',()=>drag=false);
+document.getElementById('run').addEventListener('pointerdown',()=>running=true);['pointerup','pointercancel','pointerleave'].forEach(ev=>document.getElementById('run').addEventListener(ev,()=>running=false));
+document.getElementById('interact').onclick=interact;
+let cakeStep=0;
+document.getElementById('cutCake').addEventListener('click',()=>{
+ const sceneEl=document.getElementById('cakeScene');
+ const button=document.getElementById('cutCake');
+ const note=document.getElementById('cakeNote');
+ if(cakeStep===0){
+  sceneEl.classList.add('blown');
+  cakeStep=1;
+  button.textContent='LET’S CUT THIS CAKE 🎂';
+  note.textContent='WISH MADE? GOOD. Nowwww, the important part. Ready to cut the red velvet? 😭';
+  showToast('WISHES SENT TO THE UNIVERSE ✨');
+ }else if(cakeStep===1){
+  sceneEl.classList.add('cut');
+  cakeStep=2;
+  button.textContent='TAKE THE FIRST BITE 🍰';
+  note.textContent='TWO BIG SLICES!! One for you, one for sharing. Look at those red velvet layers and that cream-cheese frostingggg.';
+  document.getElementById('cakeIntro').textContent='THAT CUT WAS SO SATISFYING. 😭 Please appreciate the layers. I was not going to give you a plain little cake.';
+  showToast('CAKE CUTTING TIME!! ❤️');
+ }else if(cakeStep===2){
+  sceneEl.classList.add('bite');
+  cakeStep=3;
+  button.textContent='BEST BIRTHDAY EVER 💗';
+  button.disabled=true;
+  note.textContent='Okay, official review time: was the cake good?? I am choosing to believe you said YES. Happy birthdayyyyy, Anshika. ❤️';
+  document.getElementById('cakeIntro').textContent='A little red velvet moment, just for you. And yes, the second slice is saved. No arguments.';
+  showToast('A LITTLE BIRTHDAY MOMENT TO KEEP 💗');
+ }
+});
+document.getElementById('closeCake').addEventListener('click',()=>{document.getElementById('cakeModal').style.display='none'});
+function showMessage(title,text){const el=document.getElementById('message');document.getElementById('msgTitle').textContent=title;document.getElementById('msgText').textContent=text;el.classList.add('show');lastMsg=performance.now()+4800}
+function discover(z){if(discovered.has(z.id))return;discovered.add(z.id);document.getElementById('count').textContent=`${discovered.size} / 6 DISCOVERED`;document.getElementById('fill').style.width=(discovered.size/6*100)+'%';const names=zones.map(q=>(discovered.has(q.id)?'✓ ':'○ ')+q.emoji+' '+q.name+(q.id==='final'&&!discovered.has('final')?' 🔒':'')).join('<br>');document.getElementById('maplist').innerHTML=names;
+showMessage(z.title,z.text);
+if(discovered.size===5){showToast('A path of golden lights has appeared…');}
+if(discovered.size===6){showToast('HAPPY BIRTHDAY, ANSHIKA! THE WORLD IS YOURS 💗');finalCake.visible=true;}}
+function showToast(t){let el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3200)}
+function interact(){
+ if(!nearZone)return;
+ let z=nearZone;
+ if(z.id==='final'&&discovered.size<5){showMessage('A LITTLE MORE EXPLORING…','Discover the other five places first. The final pavilion is waiting for you.');return}
+ discover(z);
+ if(z.id==='cafe'){
+  document.getElementById('cakeModal').style.display='grid';
+  const cakeScene=document.getElementById('cakeScene');
+  cakeScene.classList.remove('blown','cut','bite');
+  cakeStep=0;
+  document.getElementById('cutCake').disabled=false;
+  document.getElementById('cutCake').textContent='MAKE A WISH ✨';
+  document.getElementById('cakeNote').textContent='Okay, close your eyes for a second and make your birthday wish. No peekinggg. 🤫';
+  document.getElementById('cakeIntro').textContent='A proper red velvet cake. Soft cream-cheese frosting, extra crumbs, strawberries… the whole thing. You didn’t think we’d skip the cake, did you? 😭';
+ }
+}
+function updateNear(){nearZone=null;let best=999;for(const z of zones){let d=Math.hypot(player.position.x-z.x,player.position.z-z.z);if(d<z.r&&d<best){best=d;nearZone=z}}const p=document.getElementById('prompt');if(nearZone){p.style.display='block';p.textContent=discovered.has(nearZone.id)?`✧ ${nearZone.name} · discovered`:`✧ ${nearZone.name} · tap INTERACT`}else p.style.display='none'}
+// keep character on island and prevent walking through central water
+function blocked(x,z){if(Math.hypot(x-18,z+20)<6.6)return true;if(Math.hypot(x,z)<2.4)return false;return Math.hypot(x,z)>41}
+const clock=new THREE.Clock();camera.userData.pitch=.28;
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04),t=clock.elapsedTime;
+// Tank-style controls are easier on touch screens: left/right turn, up/down walk.
+let turn=moveX;
+if(keys.a||keys.arrowleft)turn-=1;
+if(keys.d||keys.arrowright)turn+=1;
+let drive=0;
+if(heldDirections.has('up')||keys.w||keys.arrowup)drive+=1;
+if(heldDirections.has('down')||keys.s||keys.arrowdown)drive-=1;
+if(keys.a||keys.arrowleft){} // turning keys are handled above
+const turnRate=2.35;
+if(Math.abs(turn)>.01){
+ camYaw += turn*turnRate*dt;
+ yaw=camYaw+Math.PI;
+ player.rotation.y=yaw;
+}
+const speed=running?7.2:3.8;
+if(Math.abs(drive)>.01){
+ const dx=-Math.sin(camYaw)*drive*speed*dt;
+ const dz=-Math.cos(camYaw)*drive*speed*dt;
+ let nx=player.position.x+dx,nz=player.position.z+dz;
+ if(!blocked(nx,player.position.z))player.position.x=nx;
+ if(!blocked(player.position.x,nz))player.position.z=nz;
+ yaw=Math.atan2(-Math.sin(camYaw),-Math.cos(camYaw));
+ player.rotation.y=yaw;
+ body.position.y=1.35+Math.sin(t*(running?13:8))* .045;
+ legL.rotation.x=Math.sin(t*speed*1.5)*.5*drive;
+ legR.rotation.x=-legL.rotation.x;
+ armL.rotation.x=-legL.rotation.x*.65;
+ armR.rotation.x=-legR.rotation.x*.65;
+}else{
+ body.position.y=1.35+Math.sin(t*2)*.025;
+ legL.rotation.x=legR.rotation.x=0;
+ armL.rotation.x=armR.rotation.x=0;
+}
+updateNear();
+const target=new THREE.Vector3(player.position.x,1.5,player.position.z);const dist=running?9:8;const pitch=camera.userData.pitch;const desired=new THREE.Vector3(target.x+Math.sin(camYaw)*dist*Math.cos(pitch),target.y+3+Math.sin(pitch)*dist,target.z+Math.cos(camYaw)*dist*Math.cos(pitch));camera.position.lerp(desired,1-Math.pow(.001,dt));camera.lookAt(target.x,target.y+.55,target.z);
+motes.forEach(m=>{m.o.position.y=m.base.y+Math.sin(t*1.3+m.phase)*.5;m.o.position.x=m.base.x+Math.sin(t*.4+m.phase)*.25});
+if(performance.now()>lastMsg)document.getElementById('message').classList.remove('show');
+renderer.render(scene,camera)}
+document.getElementById('start').onclick=()=>{loading.style.opacity='0';setTimeout(()=>loading.remove(),850);hud.style.display='block';showMessage('YOUR ADVENTURE BEGINS','Use ▲ to walk forward and ▼ to reverse. Hold ↶ or ↷ to turn. Drag the open screen to adjust your view. Go wander around, get close to a glowing place, and tap INTERACT. There’s no hurry. 💗');animate()};
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
